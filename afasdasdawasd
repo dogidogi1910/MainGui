@@ -1,0 +1,501 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.Name = "FoxMenu"
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Parent = screenGui
+mainFrame.Size = UDim2.new(0, 500, 0, 650)
+mainFrame.Position = UDim2.new(0.5, -250, 0.5, -325)
+mainFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
+mainFrame.BackgroundTransparency = 0.4
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = true
+mainFrame.ClipsDescendants = true
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.Parent = mainFrame
+mainCorner.CornerRadius = UDim.new(0, 12)
+
+local stroke = Instance.new("UIStroke")
+stroke.Parent = mainFrame
+stroke.Color = Color3.fromRGB(255, 255, 255)
+stroke.Thickness = 1.5
+stroke.Transparency = 0.3
+
+-- ВКЛАДКИ
+local tabContainer = Instance.new("Frame")
+tabContainer.Parent = mainFrame
+tabContainer.Size = UDim2.new(1, 0, 0, 45)
+tabContainer.Position = UDim2.new(0, 0, 0, 0)
+tabContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+tabContainer.BackgroundTransparency = 0.4
+tabContainer.BorderSizePixel = 0
+
+local tabContainerCorner = Instance.new("UICorner")
+tabContainerCorner.Parent = tabContainer
+tabContainerCorner.CornerRadius = UDim.new(0, 12)
+
+local tabContainerStroke = Instance.new("UIStroke")
+tabContainerStroke.Parent = tabContainer
+tabContainerStroke.Color = Color3.fromRGB(255, 255, 255)
+tabContainerStroke.Thickness = 1
+tabContainerStroke.Transparency = 0.2
+
+local tabs = {"Combat", "Esp", "Misc", "Ui"}
+local tabButtons = {}
+local currentTab = "Combat"
+local allContainers = {}
+
+for i, name in ipairs(tabs) do
+    local btn = Instance.new("TextButton")
+    btn.Parent = tabContainer
+    btn.Size = UDim2.new(0.25, -6, 1, -8)
+    btn.Position = UDim2.new((i-1) * 0.25 + 3/500, 0, 0, 4)
+    btn.BackgroundColor3 = i == 1 and Color3.fromRGB(90, 60, 220) or Color3.fromRGB(20, 20, 28)
+    btn.BackgroundTransparency = i == 1 and 0 or 0.4
+    btn.Text = name
+    btn.TextColor3 = i == 1 and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 160, 180)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.Parent = btn
+    btnCorner.CornerRadius = UDim.new(0, 8)
+    
+    tabButtons[name] = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        for _, b in pairs(tabButtons) do
+            b.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+            b.BackgroundTransparency = 0.4
+            b.TextColor3 = Color3.fromRGB(160, 160, 180)
+        end
+        btn.BackgroundColor3 = Color3.fromRGB(90, 60, 220)
+        btn.BackgroundTransparency = 0
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        currentTab = name
+        updateContent()
+    end)
+end
+
+-- КОНТЕНТ
+local contentFrame = Instance.new("Frame")
+contentFrame.Parent = mainFrame
+contentFrame.Size = UDim2.new(1, -24, 1, -65)
+contentFrame.Position = UDim2.new(0, 12, 0, 55)
+contentFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+contentFrame.BackgroundTransparency = 0.4
+contentFrame.BorderSizePixel = 0
+contentFrame.ClipsDescendants = true
+
+local contentCorner = Instance.new("UICorner")
+contentCorner.Parent = contentFrame
+contentCorner.CornerRadius = UDim.new(0, 8)
+
+local contentStroke = Instance.new("UIStroke")
+contentStroke.Parent = contentFrame
+contentStroke.Color = Color3.fromRGB(255, 255, 255)
+contentStroke.Thickness = 1
+contentStroke.Transparency = 0.2
+
+-- ===== ESP КОНТЕНТ =====
+local espContainer = Instance.new("ScrollingFrame")
+espContainer.Parent = contentFrame
+espContainer.Size = UDim2.new(1, 0, 1, 0)
+espContainer.BackgroundTransparency = 1
+espContainer.Visible = false
+espContainer.ScrollBarThickness = 3
+espContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+allContainers["Esp"] = espContainer
+
+local espLayout = Instance.new("UIListLayout")
+espLayout.Parent = espContainer
+espLayout.Padding = UDim.new(0, 4)
+espLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- MAIN TOGGLE: Player Esp
+local playerEspFrame = Instance.new("Frame")
+playerEspFrame.Parent = espContainer
+playerEspFrame.Size = UDim2.new(1, 0, 0, 30)
+playerEspFrame.BackgroundColor3 = Color3.fromRGB(38, 38, 46)
+playerEspFrame.BorderSizePixel = 0
+
+local playerEspCorner = Instance.new("UICorner")
+playerEspCorner.Parent = playerEspFrame
+playerEspCorner.CornerRadius = UDim.new(0, 4)
+
+local playerEspLabel = Instance.new("TextLabel")
+playerEspLabel.Parent = playerEspFrame
+playerEspLabel.Size = UDim2.new(0.6, 0, 1, 0)
+playerEspLabel.Position = UDim2.new(0, 10, 0, 0)
+playerEspLabel.BackgroundTransparency = 1
+playerEspLabel.Text = "Player Esp"
+playerEspLabel.TextColor3 = Color3.fromRGB(215, 215, 225)
+playerEspLabel.Font = Enum.Font.Gotham
+playerEspLabel.TextSize = 13
+playerEspLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local playerEspBtn = Instance.new("TextButton")
+playerEspBtn.Parent = playerEspFrame
+playerEspBtn.Size = UDim2.new(0, 45, 0, 22)
+playerEspBtn.Position = UDim2.new(1, -50, 0.5, -11)
+playerEspBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+playerEspBtn.Text = "OFF"
+playerEspBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+playerEspBtn.Font = Enum.Font.GothamBold
+playerEspBtn.TextSize = 10
+playerEspBtn.BorderSizePixel = 0
+
+local playerEspBtnCorner = Instance.new("UICorner")
+playerEspBtnCorner.Parent = playerEspBtn
+playerEspBtnCorner.CornerRadius = UDim.new(0, 3)
+
+local playerEspState = false
+local subElements = {}
+
+playerEspBtn.MouseButton1Click:Connect(function()
+    playerEspState = not playerEspState
+    playerEspBtn.BackgroundColor3 = playerEspState and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
+    playerEspBtn.Text = playerEspState and "ON" or "OFF"
+    
+    for _, elem in ipairs(subElements) do
+        elem.Visible = playerEspState
+    end
+    
+    task.wait()
+    espContainer.CanvasSize = UDim2.new(0, 0, 0, espLayout.AbsoluteContentSize.Y + 10)
+end)
+
+-- СОЗДАЕМ ПОДЭЛЕМЕНТЫ
+local subContainer = Instance.new("Frame")
+subContainer.Parent = espContainer
+subContainer.Size = UDim2.new(1, 0, 0, 0)
+subContainer.BackgroundTransparency = 1
+subContainer.Visible = false
+
+local subLayout = Instance.new("UIListLayout")
+subLayout.Parent = subContainer
+subLayout.Padding = UDim.new(0, 4)
+subLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Функция создания подтоггла с цветом
+local function createSubToggleWithColor(parent, name, default, colorCallback, toggleCallback)
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 26)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+    frame.BorderSizePixel = 0
+    
+    local corner = Instance.new("UICorner")
+    corner.Parent = frame
+    corner.CornerRadius = UDim.new(0, 4)
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.Size = UDim2.new(0.45, 0, 1, 0)
+    label.Position = UDim2.new(0, 15, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(200, 200, 210)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local btn = Instance.new("TextButton")
+    btn.Parent = frame
+    btn.Size = UDim2.new(0, 38, 0, 18)
+    btn.Position = UDim2.new(0.5, 0, 0.5, -9)
+    btn.BackgroundColor3 = default and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
+    btn.Text = default and "ON" or "OFF"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 9
+    btn.BorderSizePixel = 0
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.Parent = btn
+    btnCorner.CornerRadius = UDim.new(0, 3)
+    
+    -- КНОПКА ВЫБОРА ЦВЕТА
+    local colorBtn = Instance.new("ImageButton")
+    colorBtn.Parent = frame
+    colorBtn.Size = UDim2.new(0, 20, 0, 20)
+    colorBtn.Position = UDim2.new(0.75, 0, 0.5, -10)
+    colorBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    colorBtn.BorderSizePixel = 0
+    
+    local colorCorner = Instance.new("UICorner")
+    colorCorner.Parent = colorBtn
+    colorCorner.CornerRadius = UDim.new(0, 3)
+    
+    local state = default
+    local currentColor = Color3.fromRGB(255, 255, 255)
+    local colorIndex = 1
+    
+    local colors = {
+        Color3.fromRGB(255, 0, 0),      -- Красный
+        Color3.fromRGB(0, 255, 0),      -- Зеленый
+        Color3.fromRGB(0, 0, 255),      -- Синий
+        Color3.fromRGB(255, 255, 0),    -- Желтый
+        Color3.fromRGB(255, 0, 255),    -- Розовый
+        Color3.fromRGB(0, 255, 255),    -- Голубой
+        Color3.fromRGB(255, 255, 255),  -- Белый
+        Color3.fromRGB(255, 127, 0),    -- Оранжевый
+    }
+    
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.BackgroundColor3 = state and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
+        btn.Text = state and "ON" or "OFF"
+        if toggleCallback then toggleCallback(state) end
+    end)
+    
+    colorBtn.MouseButton1Click:Connect(function()
+        colorIndex = colorIndex % #colors + 1
+        currentColor = colors[colorIndex]
+        colorBtn.BackgroundColor3 = currentColor
+        if colorCallback then colorCallback(currentColor) end
+    end)
+    
+    return frame
+end
+
+-- Функция создания простого тоггла (без цвета)
+local function createSubToggle(parent, name, default, toggleCallback)
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 26)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+    frame.BorderSizePixel = 0
+    
+    local corner = Instance.new("UICorner")
+    corner.Parent = frame
+    corner.CornerRadius = UDim.new(0, 4)
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.Position = UDim2.new(0, 15, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(200, 200, 210)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local btn = Instance.new("TextButton")
+    btn.Parent = frame
+    btn.Size = UDim2.new(0, 38, 0, 18)
+    btn.Position = UDim2.new(0.5, 0, 0.5, -9)
+    btn.BackgroundColor3 = default and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
+    btn.Text = default and "ON" or "OFF"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 9
+    btn.BorderSizePixel = 0
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.Parent = btn
+    btnCorner.CornerRadius = UDim.new(0, 3)
+    
+    local state = default
+    
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.BackgroundColor3 = state and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
+        btn.Text = state and "ON" or "OFF"
+        if toggleCallback then toggleCallback(state) end
+    end)
+    
+    return frame
+end
+
+-- Box
+local boxToggle = createSubToggleWithColor(subContainer, "Box", false, 
+    function(color) print("Box Color:", color) end,
+    function(state) print("Box:", state) end
+)
+
+-- Name
+local nameToggle = createSubToggleWithColor(subContainer, "Name", false,
+    function(color) print("Name Color:", color) end,
+    function(state) print("Name:", state) end
+)
+
+-- Skeleton
+local skeletonToggle = createSubToggleWithColor(subContainer, "Skeleton", false,
+    function(color) print("Skeleton Color:", color) end,
+    function(state) print("Skeleton:", state) end
+)
+
+-- Distance
+local distanceToggle = createSubToggleWithColor(subContainer, "Distance", false,
+    function(color) print("Distance Color:", color) end,
+    function(state) print("Distance:", state) end
+)
+
+-- HealthBar (с цветом)
+local healthBarToggle = createSubToggleWithColor(subContainer, "HealthBar", false,
+    function(color) print("HealthBar Color:", color) end,
+    function(state) print("HealthBar:", state) end
+)
+
+-- TeamCheck (без цвета)
+local teamCheckToggle = createSubToggle(subContainer, "TeamCheck", false,
+    function(state) print("TeamCheck:", state) end
+)
+
+table.insert(subElements, subContainer)
+
+task.wait()
+espContainer.CanvasSize = UDim2.new(0, 0, 0, espLayout.AbsoluteContentSize.Y + 10)
+
+-- ===== COMBAT КОНТЕНТ =====
+local combatContainer = Instance.new("ScrollingFrame")
+combatContainer.Parent = contentFrame
+combatContainer.Size = UDim2.new(1, 0, 1, 0)
+combatContainer.BackgroundTransparency = 1
+combatContainer.Visible = true
+combatContainer.ScrollBarThickness = 3
+combatContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+allContainers["Combat"] = combatContainer
+
+local combatLayout = Instance.new("UIListLayout")
+combatLayout.Parent = combatContainer
+combatLayout.Padding = UDim.new(0, 4)
+combatLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local combatLabel = Instance.new("TextLabel")
+combatLabel.Parent = combatContainer
+combatLabel.Size = UDim2.new(1, 0, 0, 30)
+combatLabel.BackgroundColor3 = Color3.fromRGB(38, 38, 46)
+combatLabel.Text = "Combat Features Here"
+combatLabel.TextColor3 = Color3.fromRGB(215, 215, 225)
+combatLabel.Font = Enum.Font.Gotham
+combatLabel.TextSize = 13
+combatLabel.BorderSizePixel = 0
+
+local combatLabelCorner = Instance.new("UICorner")
+combatLabelCorner.Parent = combatLabel
+combatLabelCorner.CornerRadius = UDim.new(0, 4)
+
+task.wait()
+combatContainer.CanvasSize = UDim2.new(0, 0, 0, combatLayout.AbsoluteContentSize.Y + 10)
+
+-- ===== MISC КОНТЕНТ =====
+local miscContainer = Instance.new("ScrollingFrame")
+miscContainer.Parent = contentFrame
+miscContainer.Size = UDim2.new(1, 0, 1, 0)
+miscContainer.BackgroundTransparency = 1
+miscContainer.Visible = false
+miscContainer.ScrollBarThickness = 3
+miscContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+allContainers["Misc"] = miscContainer
+
+local miscLayout = Instance.new("UIListLayout")
+miscLayout.Parent = miscContainer
+miscLayout.Padding = UDim.new(0, 4)
+miscLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local miscLabel = Instance.new("TextLabel")
+miscLabel.Parent = miscContainer
+miscLabel.Size = UDim2.new(1, 0, 0, 30)
+miscLabel.BackgroundColor3 = Color3.fromRGB(38, 38, 46)
+miscLabel.Text = "Misc Features Here"
+miscLabel.TextColor3 = Color3.fromRGB(215, 215, 225)
+miscLabel.Font = Enum.Font.Gotham
+miscLabel.TextSize = 13
+miscLabel.BorderSizePixel = 0
+
+local miscLabelCorner = Instance.new("UICorner")
+miscLabelCorner.Parent = miscLabel
+miscLabelCorner.CornerRadius = UDim.new(0, 4)
+
+task.wait()
+miscContainer.CanvasSize = UDim2.new(0, 0, 0, miscLayout.AbsoluteContentSize.Y + 10)
+
+-- ===== UI КОНТЕНТ =====
+local uiContainer = Instance.new("ScrollingFrame")
+uiContainer.Parent = contentFrame
+uiContainer.Size = UDim2.new(1, 0, 1, 0)
+uiContainer.BackgroundTransparency = 1
+uiContainer.Visible = false
+uiContainer.ScrollBarThickness = 3
+uiContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+allContainers["Ui"] = uiContainer
+
+local uiLayout = Instance.new("UIListLayout")
+uiLayout.Parent = uiContainer
+uiLayout.Padding = UDim.new(0, 4)
+uiLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local uiLabel = Instance.new("TextLabel")
+uiLabel.Parent = uiContainer
+uiLabel.Size = UDim2.new(1, 0, 0, 30)
+uiLabel.BackgroundColor3 = Color3.fromRGB(38, 38, 46)
+uiLabel.Text = "UI Features Here"
+uiLabel.TextColor3 = Color3.fromRGB(215, 215, 225)
+uiLabel.Font = Enum.Font.Gotham
+uiLabel.TextSize = 13
+uiLabel.BorderSizePixel = 0
+
+local uiLabelCorner = Instance.new("UICorner")
+uiLabelCorner.Parent = uiLabel
+uiLabelCorner.CornerRadius = UDim.new(0, 4)
+
+task.wait()
+uiContainer.CanvasSize = UDim2.new(0, 0, 0, uiLayout.AbsoluteContentSize.Y + 10)
+
+function updateContent()
+    for name, container in pairs(allContainers) do
+        container.Visible = (name == currentTab)
+    end
+end
+
+updateContent()
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        mainFrame.Visible = not mainFrame.Visible
+    end
+end)
+
+local dragging = false
+local dragStart = nil
+local frameStart = nil
+
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        frameStart = mainFrame.Position
+    end
+end)
+
+mainFrame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if not dragging then return end
+    if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+    
+    local offset = input.Position - dragStart
+    mainFrame.Position = UDim2.new(
+        frameStart.X.Scale,
+        frameStart.X.Offset + offset.X,
+        frameStart.Y.Scale,
+        frameStart.Y.Offset + offset.Y
+    )
+end)
+
+print("LOADED - Press Right Shift")
