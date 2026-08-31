@@ -78,13 +78,13 @@ for i, name in ipairs(tabs) do
     btn.TextSize = 14
     btn.BorderSizePixel = 0
     btn.AutoButtonColor = false
-    
+
     local btnCorner = Instance.new("UICorner")
     btnCorner.Parent = btn
     btnCorner.CornerRadius = UDim.new(0, 8)
-    
+
     tabButtons[name] = btn
-    
+
     btn.MouseButton1Click:Connect(function()
         for _, b in pairs(tabButtons) do
             b.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
@@ -171,18 +171,17 @@ local playerEspBtnCorner = Instance.new("UICorner")
 playerEspBtnCorner.Parent = playerEspBtn
 playerEspBtnCorner.CornerRadius = UDim.new(0, 3)
 
-local playerEspState = false
 local subElements = {}
 
 playerEspBtn.MouseButton1Click:Connect(function()
-    playerEspState = not playerEspState
-    playerEspBtn.BackgroundColor3 = playerEspState and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
-    playerEspBtn.Text = playerEspState and "ON" or "OFF"
-    
+    _G.ESP.enabled = not _G.ESP.enabled
+    playerEspBtn.BackgroundColor3 = _G.ESP.enabled and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
+    playerEspBtn.Text = _G.ESP.enabled and "ON" or "OFF"
+
     for _, elem in ipairs(subElements) do
-        elem.Visible = playerEspState
+        elem.Visible = _G.ESP.enabled
     end
-    
+
     task.wait()
     espContainer.CanvasSize = UDim2.new(0, 0, 0, espLayout.AbsoluteContentSize.Y + 10)
 end)
@@ -200,17 +199,17 @@ subLayout.Padding = UDim.new(0, 4)
 subLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 -- Функция создания подтоггла с цветом
-local function createSubToggleWithColor(parent, name, default, colorCallback, toggleCallback)
+local function createSubToggleWithColor(parent, name, key, default, colorKey)
     local frame = Instance.new("Frame")
     frame.Parent = parent
     frame.Size = UDim2.new(1, 0, 0, 26)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
     frame.BorderSizePixel = 0
-    
+
     local corner = Instance.new("UICorner")
     corner.Parent = frame
     corner.CornerRadius = UDim.new(0, 4)
-    
+
     local label = Instance.new("TextLabel")
     label.Parent = frame
     label.Size = UDim2.new(0.45, 0, 1, 0)
@@ -221,7 +220,7 @@ local function createSubToggleWithColor(parent, name, default, colorCallback, to
     label.Font = Enum.Font.Gotham
     label.TextSize = 12
     label.TextXAlignment = Enum.TextXAlignment.Left
-    
+
     local btn = Instance.new("TextButton")
     btn.Parent = frame
     btn.Size = UDim2.new(0, 38, 0, 18)
@@ -232,11 +231,11 @@ local function createSubToggleWithColor(parent, name, default, colorCallback, to
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 9
     btn.BorderSizePixel = 0
-    
+
     local btnCorner = Instance.new("UICorner")
     btnCorner.Parent = btn
     btnCorner.CornerRadius = UDim.new(0, 3)
-    
+
     -- КНОПКА ВЫБОРА ЦВЕТА
     local colorBtn = Instance.new("ImageButton")
     colorBtn.Parent = frame
@@ -244,55 +243,53 @@ local function createSubToggleWithColor(parent, name, default, colorCallback, to
     colorBtn.Position = UDim2.new(0.75, 0, 0.5, -10)
     colorBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     colorBtn.BorderSizePixel = 0
-    
+
     local colorCorner = Instance.new("UICorner")
     colorCorner.Parent = colorBtn
     colorCorner.CornerRadius = UDim.new(0, 3)
-    
+
     local state = default
-    local currentColor = Color3.fromRGB(255, 255, 255)
     local colorIndex = 1
-    
+
     local colors = {
-        Color3.fromRGB(255, 0, 0),      -- Красный
-        Color3.fromRGB(0, 255, 0),      -- Зеленый
-        Color3.fromRGB(0, 0, 255),      -- Синий
-        Color3.fromRGB(255, 255, 0),    -- Желтый
-        Color3.fromRGB(255, 0, 255),    -- Розовый
-        Color3.fromRGB(0, 255, 255),    -- Голубой
-        Color3.fromRGB(255, 255, 255),  -- Белый
-        Color3.fromRGB(255, 127, 0),    -- Оранжевый
+        Color3.fromRGB(255, 0, 0),
+        Color3.fromRGB(0, 255, 0),
+        Color3.fromRGB(0, 0, 255),
+        Color3.fromRGB(255, 255, 0),
+        Color3.fromRGB(255, 0, 255),
+        Color3.fromRGB(0, 255, 255),
+        Color3.fromRGB(255, 255, 255),
+        Color3.fromRGB(255, 127, 0),
     }
-    
+
     btn.MouseButton1Click:Connect(function()
         state = not state
         btn.BackgroundColor3 = state and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
         btn.Text = state and "ON" or "OFF"
-        if toggleCallback then toggleCallback(state) end
+        _G.ESP[key] = state
     end)
-    
+
     colorBtn.MouseButton1Click:Connect(function()
         colorIndex = colorIndex % #colors + 1
-        currentColor = colors[colorIndex]
-        colorBtn.BackgroundColor3 = currentColor
-        if colorCallback then colorCallback(currentColor) end
+        _G.ESP[colorKey] = colors[colorIndex]
+        colorBtn.BackgroundColor3 = colors[colorIndex]
     end)
-    
+
     return frame
 end
 
--- Функция создания простого тоггла (без цвета)
-local function createSubToggle(parent, name, default, toggleCallback)
+-- Функция создания простого тоггла
+local function createSubToggle(parent, name, key, default)
     local frame = Instance.new("Frame")
     frame.Parent = parent
     frame.Size = UDim2.new(1, 0, 0, 26)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
     frame.BorderSizePixel = 0
-    
+
     local corner = Instance.new("UICorner")
     corner.Parent = frame
     corner.CornerRadius = UDim.new(0, 4)
-    
+
     local label = Instance.new("TextLabel")
     label.Parent = frame
     label.Size = UDim2.new(0.6, 0, 1, 0)
@@ -303,7 +300,7 @@ local function createSubToggle(parent, name, default, toggleCallback)
     label.Font = Enum.Font.Gotham
     label.TextSize = 12
     label.TextXAlignment = Enum.TextXAlignment.Left
-    
+
     local btn = Instance.new("TextButton")
     btn.Parent = frame
     btn.Size = UDim2.new(0, 38, 0, 18)
@@ -314,57 +311,35 @@ local function createSubToggle(parent, name, default, toggleCallback)
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 9
     btn.BorderSizePixel = 0
-    
+
     local btnCorner = Instance.new("UICorner")
     btnCorner.Parent = btn
     btnCorner.CornerRadius = UDim.new(0, 3)
-    
+
     local state = default
-    
+
     btn.MouseButton1Click:Connect(function()
         state = not state
         btn.BackgroundColor3 = state and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
         btn.Text = state and "ON" or "OFF"
-        if toggleCallback then toggleCallback(state) end
+        _G.ESP[key] = state
     end)
-    
+
     return frame
 end
 
 -- Box
-local boxToggle = createSubToggleWithColor(subContainer, "Box", false, 
-    function(color) print("Box Color:", color) end,
-    function(state) print("Box:", state) end
-)
-
+local boxToggle = createSubToggleWithColor(subContainer, "Box", "box", false, "boxColor")
 -- Name
-local nameToggle = createSubToggleWithColor(subContainer, "Name", false,
-    function(color) print("Name Color:", color) end,
-    function(state) print("Name:", state) end
-)
-
+local nameToggle = createSubToggleWithColor(subContainer, "Name", "name", false, "nameColor")
 -- Skeleton
-local skeletonToggle = createSubToggleWithColor(subContainer, "Skeleton", false,
-    function(color) print("Skeleton Color:", color) end,
-    function(state) print("Skeleton:", state) end
-)
-
+local skeletonToggle = createSubToggleWithColor(subContainer, "Skeleton", "skeleton", false, "skeletonColor")
 -- Distance
-local distanceToggle = createSubToggleWithColor(subContainer, "Distance", false,
-    function(color) print("Distance Color:", color) end,
-    function(state) print("Distance:", state) end
-)
-
--- HealthBar (с цветом)
-local healthBarToggle = createSubToggleWithColor(subContainer, "HealthBar", false,
-    function(color) print("HealthBar Color:", color) end,
-    function(state) print("HealthBar:", state) end
-)
-
--- TeamCheck (без цвета)
-local teamCheckToggle = createSubToggle(subContainer, "TeamCheck", false,
-    function(state) print("TeamCheck:", state) end
-)
+local distanceToggle = createSubToggleWithColor(subContainer, "Distance", "distance", false, "distanceColor")
+-- HealthBar
+local healthBarToggle = createSubToggleWithColor(subContainer, "HealthBar", "healthbar", false, "healthbarColor")
+-- TeamCheck
+local teamCheckToggle = createSubToggle(subContainer, "TeamCheck", "teamcheck", false)
 
 table.insert(subElements, subContainer)
 
@@ -503,7 +478,7 @@ end)
 UserInputService.InputChanged:Connect(function(input)
     if not dragging then return end
     if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
-    
+
     local offset = input.Position - dragStart
     mainFrame.Position = UDim2.new(
         frameStart.X.Scale,
@@ -513,4 +488,91 @@ UserInputService.InputChanged:Connect(function(input)
     )
 end)
 
-print("LOADED - Press Right Shift")
+-- ===== 3. ФУНКЦИИ ESP (ОТРИСОВКА) =====
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local Drawing = Drawing or nil
+
+local function getPlayers()
+    local list = {}
+    for _, v in ipairs(Players:GetPlayers()) do
+        if v ~= player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(list, v)
+        end
+    end
+    return list
+end
+
+local function worldToScreen(pos)
+    local vec, onScreen = Camera:WorldToViewportPoint(pos)
+    return Vector2.new(vec.X, vec.Y), onScreen
+end
+
+-- Рисуем бокс через Drawing (если есть)
+local function drawBox(character, color)
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local pos, onScreen = worldToScreen(hrp.Position)
+    if not onScreen then return end
+    
+    -- Тут будет реальная отрисовка
+    print("Рисую бокс для " .. character.Name)
+end
+
+-- Рисуем имя
+local function drawName(character, color)
+    -- Логика отрисовки имени
+end
+
+-- Рисуем скелет
+local function drawSkeleton(character, color)
+    -- Логика отрисовки скелета
+end
+
+-- Рисуем дистанцию
+local function drawDistance(character, color)
+    -- Логика отрисовки дистанции
+end
+
+-- Рисуем хп бар
+local function drawHealthBar(character, color)
+    -- Логика отрисовки хп бара
+end
+
+-- Проверка команды
+local function checkTeam(character)
+    -- Логика проверки команды
+    return true
+end
+
+-- Главный цикл отрисовки
+RunService.RenderStepped:Connect(function()
+    if not _G.ESP.enabled then return end
+    
+    for _, v in ipairs(getPlayers()) do
+        local char = v.Character
+        if not char then continue end
+        
+        if _G.ESP.box then
+            drawBox(char, _G.ESP.boxColor)
+        end
+        if _G.ESP.name then
+            drawName(char, _G.ESP.nameColor)
+        end
+        if _G.ESP.skeleton then
+            drawSkeleton(char, _G.ESP.skeletonColor)
+        end
+        if _G.ESP.distance then
+            drawDistance(char, _G.ESP.distanceColor)
+        end
+        if _G.ESP.healthbar then
+            drawHealthBar(char, _G.ESP.healthbarColor)
+        end
+        if _G.ESP.teamcheck then
+            checkTeam(char)
+        end
+    end
+end)
+
+print("MENU + ESP LOADED - Press Right Shift")
