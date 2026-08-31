@@ -1,263 +1,43 @@
 -- ===================================================
--- РАБОЧИЙ СКРИПТ: МЕНЮ + ESP ДЛЯ LONE SURVIVAL
+-- ПОЛНЫЙ РАБОЧИЙ СКРИПТ: МЕНЮ + ESP ДЛЯ LONE SURVIVAL
 -- ===================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
-local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local Camera = workspace.CurrentCamera
 local player = Players.LocalPlayer
 
 -- ===== 1. ПЕРЕМЕННЫЕ =====
 _G.ESP = {
-    Enabled = false,
-    TeamCheck = true,
-    MaxDistance = 10000,
-    FontSize = 13,
+    enabled = true,
+    players = true,
+    sleepers = true,
+    alwaysDay = false,
+    noGrass = false,
     box = false,
-    name = false,
-    distance = false,
-    healthbar = false,
+    name = true,
+    health = true,
+    distance = true,
 }
 
--- ===== 2. ПОИСК ИГРОКОВ В WORKSPACE =====
-local function findPlayersInWorkspace()
-    local found = {}
-    for _, obj in ipairs(workspace:GetChildren()) do
-        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
-            if obj ~= player.Character then
-                table.insert(found, obj)
-            end
-        end
-    end
-    return found
-end
-
--- ===== 3. GUI ДЛЯ ESP =====
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = CoreGui
-screenGui.Name = "FoxESPHolder"
-screenGui.ResetOnSpawn = false
-
 local espObjects = {}
+local menuVisible = true
 
-local function createEspForPlayer(model)
-    if espObjects[model] then return end
-    
-    -- Бокс
-    local box = Instance.new("Frame")
-    box.Parent = screenGui
-    box.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    box.BackgroundTransparency = 0.75
-    box.BorderSizePixel = 1
-    box.BorderColor3 = Color3.fromRGB(255, 255, 255)
-    box.Visible = false
-    
-    -- Имя
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Parent = screenGui
-    nameLabel.Size = UDim2.new(0, 200, 0, 20)
-    nameLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextSize = 13
-    nameLabel.TextStrokeTransparency = 0
-    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    nameLabel.Visible = false
-    
-    -- Дистанция
-    local distLabel = Instance.new("TextLabel")
-    distLabel.Parent = screenGui
-    distLabel.Size = UDim2.new(0, 100, 0, 20)
-    distLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-    distLabel.BackgroundTransparency = 1
-    distLabel.TextColor3 = Color3.fromRGB(121, 7, 252)
-    distLabel.Font = Enum.Font.Gotham
-    distLabel.TextSize = 12
-    distLabel.TextStrokeTransparency = 0
-    distLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    distLabel.Visible = false
-    
-    -- ХП бар
-    local healthBar = Instance.new("Frame")
-    healthBar.Parent = screenGui
-    healthBar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-    healthBar.BackgroundTransparency = 0
-    healthBar.BorderSizePixel = 0
-    healthBar.Visible = false
-    
-    local healthBg = Instance.new("Frame")
-    healthBg.Parent = screenGui
-    healthBg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    healthBg.BackgroundTransparency = 0.3
-    healthBg.BorderSizePixel = 0
-    healthBg.Visible = false
-    
-    local function hideAll()
-        box.Visible = false
-        nameLabel.Visible = false
-        distLabel.Visible = false
-        healthBar.Visible = false
-        healthBg.Visible = false
-    end
-    
-    local connection
-    connection = RunService.RenderStepped:Connect(function()
-        if not _G.ESP.Enabled then
-            hideAll()
-            return
-        end
-        
-        if not model or not model.Parent then
-            hideAll()
-            return
-        end
-        
-        local hrp = model:FindFirstChild("HumanoidRootPart")
-        local humanoid = model:FindFirstChild("Humanoid")
-        if not hrp or not humanoid then
-            hideAll()
-            return
-        end
-        
-        local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-        if not onScreen then
-            hideAll()
-            return
-        end
-        
-        local dist = (hrp.Position - Camera.CFrame.Position).Magnitude / 3.5714285714
-        if dist > _G.ESP.MaxDistance then
-            hideAll()
-            return
-        end
-        
-        -- Размеры
-        local sizeY = 4
-        local head = model:FindFirstChild("Head")
-        if head and head:IsA("BasePart") then
-            local headPos = Camera:WorldToViewportPoint(head.Position)
-            sizeY = math.abs(headPos.Y - pos.Y) * 1.5
-        end
-        
-        if sizeY < 2 then
-            sizeY = math.clamp(200 / dist, 1.5, 10)
-        end
-        local sizeX = sizeY * 0.6
-        
-        -- БОКС
-        if _G.ESP.box then
-            box.Size = UDim2.new(0, sizeX, 0, sizeY)
-            box.Position = UDim2.new(0, pos.X - sizeX / 2, 0, pos.Y - sizeY / 2)
-            box.Visible = true
-        else
-            box.Visible = false
-        end
-        
-        -- ИМЯ
-        if _G.ESP.name then
-            nameLabel.Text = model.Name
-            nameLabel.Position = UDim2.new(0, pos.X, 0, pos.Y - sizeY / 2 - 16)
-            nameLabel.Visible = true
-        else
-            nameLabel.Visible = false
-        end
-        
-        -- ДИСТАНЦИЯ
-        if _G.ESP.distance then
-            distLabel.Text = string.format("%.0fm", dist)
-            distLabel.Position = UDim2.new(0, pos.X, 0, pos.Y + sizeY / 2 + 16)
-            distLabel.Visible = true
-        else
-            distLabel.Visible = false
-        end
-        
-        -- ХП БАР
-        if _G.ESP.healthbar then
-            local health = humanoid.Health / humanoid.MaxHealth
-            if health < 0 then health = 0
-            
-            local barWidth = 2.5
-            local barHeight = sizeY
-            
-            healthBg.Size = UDim2.new(0, barWidth + 2, 0, barHeight + 2)
-            healthBg.Position = UDim2.new(0, pos.X - sizeX / 2 - 6 - 1, 0, pos.Y - sizeY / 2 - 1)
-            healthBg.Visible = true
-            
-            healthBar.Size = UDim2.new(0, barWidth, 0, barHeight * health)
-            healthBar.Position = UDim2.new(0, pos.X - sizeX / 2 - 6, 0, pos.Y + sizeY / 2 - barHeight * health)
-            healthBar.BackgroundColor3 = Color3.new(1 - health, health, 0)
-            healthBar.Visible = true
-        else
-            healthBar.Visible = false
-            healthBg.Visible = false
-        end
-    end)
-    
-    model.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            box:Destroy()
-            nameLabel:Destroy()
-            distLabel:Destroy()
-            healthBar:Destroy()
-            healthBg:Destroy()
-            connection:Disconnect()
-            espObjects[model] = nil
-        end
-    end)
-    
-    espObjects[model] = {
-        box = box,
-        name = nameLabel,
-        distance = distLabel,
-        healthBar = healthBar,
-        healthBg = healthBg,
-        connection = connection
-    }
-end
-
--- ===== 4. СКАНИРОВАНИЕ =====
-local function scanForPlayers()
-    local models = findPlayersInWorkspace()
-    for _, model in ipairs(models) do
-        if not espObjects[model] then
-            createEspForPlayer(model)
-        end
-    end
-    
-    for model, _ in pairs(espObjects) do
-        if not model or not model.Parent then
-            if espObjects[model] and espObjects[model].connection then
-                espObjects[model].connection:Disconnect()
-            end
-            espObjects[model] = nil
-        end
-    end
-end
-
-task.spawn(function()
-    while task.wait(2) do
-        if _G.ESP.Enabled then
-            scanForPlayers()
-        end
-    end
-end)
-
--- ===== 5. МЕНЮ =====
-local screenGuiMenu = Instance.new("ScreenGui")
-screenGuiMenu.Parent = player:WaitForChild("PlayerGui")
-screenGuiMenu.Name = "FoxMenu"
+-- ===== 2. МЕНЮ =====
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.Name = "FoxMenu"
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Parent = screenGuiMenu
+mainFrame.Parent = screenGui
 mainFrame.Size = UDim2.new(0, 500, 0, 650)
 mainFrame.Position = UDim2.new(0.5, -250, 0.5, -325)
 mainFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
 mainFrame.BackgroundTransparency = 0.4
 mainFrame.BorderSizePixel = 0
-mainFrame.Visible = false
+mainFrame.Visible = true
 mainFrame.ClipsDescendants = true
 
 local mainCorner = Instance.new("UICorner")
@@ -291,7 +71,7 @@ tabContainerStroke.Transparency = 0.2
 
 local tabs = {"Combat", "Esp", "Misc", "Ui"}
 local tabButtons = {}
-local currentTab = "Combat"
+local currentTab = "Esp"
 local allContainers = {}
 
 for i, name in ipairs(tabs) do
@@ -353,7 +133,7 @@ local espContainer = Instance.new("ScrollingFrame")
 espContainer.Parent = contentFrame
 espContainer.Size = UDim2.new(1, 0, 1, 0)
 espContainer.BackgroundTransparency = 1
-espContainer.Visible = false
+espContainer.Visible = true
 espContainer.ScrollBarThickness = 3
 espContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 allContainers["Esp"] = espContainer
@@ -363,108 +143,44 @@ espLayout.Parent = espContainer
 espLayout.Padding = UDim.new(0, 4)
 espLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- MAIN TOGGLE
-local playerEspFrame = Instance.new("Frame")
-playerEspFrame.Parent = espContainer
-playerEspFrame.Size = UDim2.new(1, 0, 0, 30)
-playerEspFrame.BackgroundColor3 = Color3.fromRGB(38, 38, 46)
-playerEspFrame.BorderSizePixel = 0
-
-local playerEspCorner = Instance.new("UICorner")
-playerEspCorner.Parent = playerEspFrame
-playerEspCorner.CornerRadius = UDim.new(0, 4)
-
-local playerEspLabel = Instance.new("TextLabel")
-playerEspLabel.Parent = playerEspFrame
-playerEspLabel.Size = UDim2.new(0.6, 0, 1, 0)
-playerEspLabel.Position = UDim2.new(0, 10, 0, 0)
-playerEspLabel.BackgroundTransparency = 1
-playerEspLabel.Text = "Player Esp"
-playerEspLabel.TextColor3 = Color3.fromRGB(215, 215, 225)
-playerEspLabel.Font = Enum.Font.Gotham
-playerEspLabel.TextSize = 13
-playerEspLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local playerEspBtn = Instance.new("TextButton")
-playerEspBtn.Parent = playerEspFrame
-playerEspBtn.Size = UDim2.new(0, 45, 0, 22)
-playerEspBtn.Position = UDim2.new(1, -50, 0.5, -11)
-playerEspBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-playerEspBtn.Text = "OFF"
-playerEspBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-playerEspBtn.Font = Enum.Font.GothamBold
-playerEspBtn.TextSize = 10
-playerEspBtn.BorderSizePixel = 0
-
-local playerEspBtnCorner = Instance.new("UICorner")
-playerEspBtnCorner.Parent = playerEspBtn
-playerEspBtnCorner.CornerRadius = UDim.new(0, 3)
-
-local subElements = {}
-
-playerEspBtn.MouseButton1Click:Connect(function()
-    _G.ESP.Enabled = not _G.ESP.Enabled
-    playerEspBtn.BackgroundColor3 = _G.ESP.Enabled and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
-    playerEspBtn.Text = _G.ESP.Enabled and "ON" or "OFF"
-    
-    for _, elem in ipairs(subElements) do
-        elem.Visible = _G.ESP.Enabled
-    end
-    
-    task.wait()
-    espContainer.CanvasSize = UDim2.new(0, 0, 0, espLayout.AbsoluteContentSize.Y + 10)
-end)
-
--- ПОДЭЛЕМЕНТЫ
-local subContainer = Instance.new("Frame")
-subContainer.Parent = espContainer
-subContainer.Size = UDim2.new(1, 0, 0, 0)
-subContainer.BackgroundTransparency = 1
-subContainer.Visible = false
-
-local subLayout = Instance.new("UIListLayout")
-subLayout.Parent = subContainer
-subLayout.Padding = UDim.new(0, 4)
-subLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
 -- Функция создания тоггла
 local function createToggle(parent, name, key, default)
     local frame = Instance.new("Frame")
     frame.Parent = parent
-    frame.Size = UDim2.new(1, 0, 0, 26)
+    frame.Size = UDim2.new(1, 0, 0, 30)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
     frame.BorderSizePixel = 0
-    
+
     local corner = Instance.new("UICorner")
     corner.Parent = frame
     corner.CornerRadius = UDim.new(0, 4)
-    
+
     local label = Instance.new("TextLabel")
     label.Parent = frame
     label.Size = UDim2.new(0.6, 0, 1, 0)
-    label.Position = UDim2.new(0, 15, 0, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = name
-    label.TextColor3 = Color3.fromRGB(200, 200, 210)
+    label.TextColor3 = Color3.fromRGB(215, 215, 225)
     label.Font = Enum.Font.Gotham
-    label.TextSize = 12
+    label.TextSize = 13
     label.TextXAlignment = Enum.TextXAlignment.Left
-    
+
     local btn = Instance.new("TextButton")
     btn.Parent = frame
-    btn.Size = UDim2.new(0, 38, 0, 18)
-    btn.Position = UDim2.new(0.5, 0, 0.5, -9)
+    btn.Size = UDim2.new(0, 48, 0, 24)
+    btn.Position = UDim2.new(1, -56, 0.5, -12)
     btn.BackgroundColor3 = default and Color3.fromRGB(70, 200, 70) or Color3.fromRGB(50, 50, 60)
     btn.Text = default and "ON" or "OFF"
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 9
+    btn.TextSize = 11
     btn.BorderSizePixel = 0
-    
+
     local btnCorner = Instance.new("UICorner")
     btnCorner.Parent = btn
-    btnCorner.CornerRadius = UDim.new(0, 3)
-    
+    btnCorner.CornerRadius = UDim.new(0, 4)
+
     local state = default
     btn.MouseButton1Click:Connect(function()
         state = not state
@@ -472,27 +188,28 @@ local function createToggle(parent, name, key, default)
         btn.Text = state and "ON" or "OFF"
         _G.ESP[key] = state
     end)
-    
+
     return frame
 end
 
--- Тогглы
-createToggle(subContainer, "Box", "box", false)
-createToggle(subContainer, "Name", "name", false)
-createToggle(subContainer, "Distance", "distance", false)
-createToggle(subContainer, "HealthBar", "healthbar", false)
-
-table.insert(subElements, subContainer)
+-- Тогглы ESP
+createToggle(espContainer, "Master ESP", "enabled", true)
+createToggle(espContainer, "Players", "players", true)
+createToggle(espContainer, "Sleepers", "sleepers", true)
+createToggle(espContainer, "Box", "box", false)
+createToggle(espContainer, "Name", "name", true)
+createToggle(espContainer, "Health", "health", true)
+createToggle(espContainer, "Distance", "distance", true)
 
 task.wait()
 espContainer.CanvasSize = UDim2.new(0, 0, 0, espLayout.AbsoluteContentSize.Y + 10)
 
--- ===== COMBAT =====
+-- ===== COMBAT КОНТЕНТ =====
 local combatContainer = Instance.new("ScrollingFrame")
 combatContainer.Parent = contentFrame
 combatContainer.Size = UDim2.new(1, 0, 1, 0)
 combatContainer.BackgroundTransparency = 1
-combatContainer.Visible = true
+combatContainer.Visible = false
 combatContainer.ScrollBarThickness = 3
 combatContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 allContainers["Combat"] = combatContainer
@@ -506,7 +223,7 @@ local combatLabel = Instance.new("TextLabel")
 combatLabel.Parent = combatContainer
 combatLabel.Size = UDim2.new(1, 0, 0, 30)
 combatLabel.BackgroundColor3 = Color3.fromRGB(38, 38, 46)
-combatLabel.Text = "Combat Features Here"
+combatLabel.Text = "Combat Features Coming Soon"
 combatLabel.TextColor3 = Color3.fromRGB(215, 215, 225)
 combatLabel.Font = Enum.Font.Gotham
 combatLabel.TextSize = 13
@@ -519,7 +236,7 @@ combatLabelCorner.CornerRadius = UDim.new(0, 4)
 task.wait()
 combatContainer.CanvasSize = UDim2.new(0, 0, 0, combatLayout.AbsoluteContentSize.Y + 10)
 
--- ===== MISC =====
+-- ===== MISC КОНТЕНТ =====
 local miscContainer = Instance.new("ScrollingFrame")
 miscContainer.Parent = contentFrame
 miscContainer.Size = UDim2.new(1, 0, 1, 0)
@@ -534,24 +251,15 @@ miscLayout.Parent = miscContainer
 miscLayout.Padding = UDim.new(0, 4)
 miscLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-local miscLabel = Instance.new("TextLabel")
-miscLabel.Parent = miscContainer
-miscLabel.Size = UDim2.new(1, 0, 0, 30)
-miscLabel.BackgroundColor3 = Color3.fromRGB(38, 38, 46)
-miscLabel.Text = "Misc Features Here"
-miscLabel.TextColor3 = Color3.fromRGB(215, 215, 225)
-miscLabel.Font = Enum.Font.Gotham
-miscLabel.TextSize = 13
-miscLabel.BorderSizePixel = 0
-
-local miscLabelCorner = Instance.new("UICorner")
-miscLabelCorner.Parent = miscLabel
-miscLabelCorner.CornerRadius = UDim.new(0, 4)
+-- No Grass
+createToggle(miscContainer, "No Grass", "noGrass", false)
+-- Always Day
+createToggle(miscContainer, "Always Day", "alwaysDay", false)
 
 task.wait()
 miscContainer.CanvasSize = UDim2.new(0, 0, 0, miscLayout.AbsoluteContentSize.Y + 10)
 
--- ===== UI =====
+-- ===== UI КОНТЕНТ =====
 local uiContainer = Instance.new("ScrollingFrame")
 uiContainer.Parent = contentFrame
 uiContainer.Size = UDim2.new(1, 0, 1, 0)
@@ -570,7 +278,7 @@ local uiLabel = Instance.new("TextLabel")
 uiLabel.Parent = uiContainer
 uiLabel.Size = UDim2.new(1, 0, 0, 30)
 uiLabel.BackgroundColor3 = Color3.fromRGB(38, 38, 46)
-uiLabel.Text = "UI Features Here"
+uiLabel.Text = "UI Features Coming Soon"
 uiLabel.TextColor3 = Color3.fromRGB(215, 215, 225)
 uiLabel.Font = Enum.Font.Gotham
 uiLabel.TextSize = 13
@@ -591,15 +299,122 @@ end
 
 updateContent()
 
--- ===== ОТКРЫТИЕ ПО RightShift =====
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        mainFrame.Visible = not mainFrame.Visible
+-- ===== 3. ЛОГИКА ESP (ИЗ РАБОЧЕГО СКРИПТА) =====
+local function applyESP(part)
+    if part.Name == "Head" and part:IsA("BasePart") then
+        local char = part.Parent
+        if not char:FindFirstChildOfClass("Humanoid") then return end
+        if char == player.Character then return end
+        
+        local isSleeper = char.Name:lower():find("sleeper") or char:FindFirstChild("Sleeper")
+        
+        -- BillboardGui
+        local bgui = Instance.new("BillboardGui")
+        bgui.Parent = part
+        bgui.AlwaysOnTop = true
+        bgui.Size = UDim2.new(0, 200, 0, 60)
+        bgui.Adornee = part
+        
+        local label = Instance.new("TextLabel")
+        label.Parent = bgui
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.TextStrokeTransparency = 0.5
+        label.TextSize = 14
+        label.Font = Enum.Font.GothamSemibold
+        label.TextXAlignment = Enum.TextXAlignment.Center
+        label.TextYAlignment = Enum.TextYAlignment.Center
+        
+        -- Highlight (подсветка)
+        local highlight = Instance.new("Highlight")
+        highlight.Parent = char
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.FillTransparency = 0.7
+        highlight.OutlineTransparency = 0.3
+        
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            if not char.Parent then
+                bgui:Destroy()
+                highlight:Destroy()
+                connection:Disconnect()
+                return
+            end
+            
+            local dist = math.floor((part.Position - Camera.CFrame.Position).Magnitude)
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local hp = hum and math.floor(hum.Health) or 0
+            local maxHp = hum and math.floor(hum.MaxHealth) or 0
+            
+            local show = false
+            
+            if _G.ESP.enabled then
+                if isSleeper and _G.ESP.sleepers then
+                    show = true
+                    local text = "SLEEPER"
+                    if _G.ESP.health then text = text .. "\n[HP: " .. hp .. "/" .. maxHp .. "]" end
+                    if _G.ESP.distance then text = text .. " [" .. dist .. "m]"
+                    label.Text = text
+                    highlight.FillColor = Color3.fromRGB(150, 150, 150)
+                    highlight.OutlineColor = Color3.fromRGB(100, 100, 100)
+                elseif not isSleeper and _G.ESP.players then
+                    show = true
+                    local text = ""
+                    if _G.ESP.name then text = char.Name end
+                    if _G.ESP.health then 
+                        if text ~= "" then text = text .. "\n" end
+                        text = text .. "[HP: " .. hp .. "/" .. maxHp .. "]"
+                    end
+                    if _G.ESP.distance then 
+                        if text ~= "" then text = text .. " " end
+                        text = text .. "[" .. dist .. "m]"
+                    end
+                    label.Text = text
+                    highlight.FillColor = Color3.fromRGB(255, 85, 85)
+                    highlight.OutlineColor = Color3.fromRGB(200, 50, 50)
+                end
+            end
+            
+            bgui.Enabled = show
+            highlight.Enabled = show
+            
+            -- Бокс (если включен)
+            if _G.ESP.box and show then
+                -- Можно добавить бокс через Frame, но BillboardGui уже есть
+                -- Просто оставляем как есть
+            end
+        end)
+    end
+end
+
+-- Сканируем существующие объекты
+for _, v in pairs(workspace:GetDescendants()) do
+    applyESP(v)
+end
+
+-- Следим за новыми
+workspace.DescendantAdded:Connect(applyESP)
+
+-- ===== 4. ЦИКЛ ДЛЯ "ВЕЧНОГО ДНЯ" =====
+RunService.Heartbeat:Connect(function()
+    if _G.ESP.alwaysDay then
+        Lighting.ClockTime = 14
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        Lighting.Brightness = 2
     end
 end)
 
--- ===== ПЕРЕТАСКИВАНИЕ =====
+-- ===== 5. ОТКРЫТИЕ ПО RightShift =====
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        menuVisible = not menuVisible
+        mainFrame.Visible = menuVisible
+    end
+end)
+
+-- ===== 6. ПЕРЕТАСКИВАНИЕ =====
 local dragging = false
 local dragStart = nil
 local frameStart = nil
@@ -631,4 +446,4 @@ UserInputService.InputChanged:Connect(function(input)
     )
 end)
 
-print("✅ MENU + ESP LOADED - Press Right Shift")
+print("✅ LOADED - Press Right Shift")
