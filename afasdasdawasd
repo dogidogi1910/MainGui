@@ -15,7 +15,6 @@ _G.ESP = {
     nameColor = Color3.fromRGB(255, 255, 255),
     skeletonColor = Color3.fromRGB(255, 255, 255),
     distanceColor = Color3.fromRGB(255, 255, 255),
-    healthbarColor = Color3.fromRGB(255, 255, 255),
 }
 
 -- ===== 2. МЕНЮ =====
@@ -284,7 +283,7 @@ local function createSubToggleWithColor(parent, name, key, default, colorKey)
     return frame
 end
 
--- Функция создания простого тоггла
+-- Функция создания простого тоггла (без цвета)
 local function createSubToggle(parent, name, key, default)
     local frame = Instance.new("Frame")
     frame.Parent = parent
@@ -342,8 +341,8 @@ local nameToggle = createSubToggleWithColor(subContainer, "Name", "name", false,
 local skeletonToggle = createSubToggleWithColor(subContainer, "Skeleton", "skeleton", false, "skeletonColor")
 -- Distance
 local distanceToggle = createSubToggleWithColor(subContainer, "Distance", "distance", false, "distanceColor")
--- HealthBar
-local healthBarToggle = createSubToggleWithColor(subContainer, "HealthBar", "healthbar", false, "healthbarColor")
+-- HealthBar (БЕЗ ЦВЕТА)
+local healthBarToggle = createSubToggle(subContainer, "HealthBar", "healthbar", false)
 -- TeamCheck
 local teamCheckToggle = createSubToggle(subContainer, "TeamCheck", "teamcheck", false)
 
@@ -532,20 +531,21 @@ local function createEsp(targetPlayer)
     distText.OutlineColor = Color3.new(0, 0, 0)
     distText.Font = 2
     
-    -- ХП бар
+    -- ХП бар (толстый, справа)
     local healthBar = Drawing.new("Square")
     healthBar.Visible = false
-    healthBar.Color = Color3.new(0, 1, 0)
+    healthBar.Color = Color3.new(1, 0, 0) -- КРАСНЫЙ
     healthBar.Thickness = 0
     healthBar.Transparency = 0.8
     healthBar.Filled = true
     
-    local healthBg = Drawing.new("Square")
-    healthBg.Visible = false
-    healthBg.Color = Color3.new(0, 0, 0)
-    healthBg.Thickness = 0
-    healthBg.Transparency = 0.7
-    healthBg.Filled = true
+    -- Обводка хп бара (черная)
+    local healthOutline = Drawing.new("Square")
+    healthOutline.Visible = false
+    healthOutline.Color = Color3.new(0, 0, 0) -- ЧЕРНАЯ ОБВОДКА
+    healthOutline.Thickness = 1
+    healthOutline.Transparency = 1
+    healthOutline.Filled = false
     
     local connection
     connection = RunService.RenderStepped:Connect(function()
@@ -554,7 +554,7 @@ local function createEsp(targetPlayer)
             nameText.Visible = false
             distText.Visible = false
             healthBar.Visible = false
-            healthBg.Visible = false
+            healthOutline.Visible = false
             return
         end
         
@@ -564,7 +564,7 @@ local function createEsp(targetPlayer)
             nameText.Visible = false
             distText.Visible = false
             healthBar.Visible = false
-            healthBg.Visible = false
+            healthOutline.Visible = false
             return
         end
         
@@ -575,7 +575,7 @@ local function createEsp(targetPlayer)
             nameText.Visible = false
             distText.Visible = false
             healthBar.Visible = false
-            healthBg.Visible = false
+            healthOutline.Visible = false
             return
         end
         
@@ -585,7 +585,7 @@ local function createEsp(targetPlayer)
             nameText.Visible = false
             distText.Visible = false
             healthBar.Visible = false
-            healthBg.Visible = false
+            healthOutline.Visible = false
             return
         end
         
@@ -626,23 +626,29 @@ local function createEsp(targetPlayer)
             distText.Visible = false
         end
         
-        -- ХП БАР
+        -- ХП БАР (СПРАВА ОТ БОКСА)
         if _G.ESP.healthbar then
             local health = humanoid.Health / humanoid.MaxHealth
-            local barWidth = sizeX
-            local barHeight = 4
+            local barWidth = 6
+            local barHeight = sizeY
             
-            healthBg.Size = Vector2.new(barWidth, barHeight)
-            healthBg.Position = Vector2.new(pos.X - barWidth / 2, pos.Y + sizeY / 2 + 2)
-            healthBg.Visible = true
+            -- Позиция справа от бокса
+            local barX = pos.X + sizeX / 2 + 4
+            local barY = pos.Y - sizeY / 2
             
-            healthBar.Size = Vector2.new(barWidth * health, barHeight)
-            healthBar.Position = Vector2.new(pos.X - barWidth / 2, pos.Y + sizeY / 2 + 2)
-            healthBar.Color = Color3.new(1 - health, health, 0)
+            -- Обводка (чуть больше)
+            healthOutline.Size = Vector2.new(barWidth + 2, barHeight + 2)
+            healthOutline.Position = Vector2.new(barX - 1, barY - 1)
+            healthOutline.Visible = true
+            
+            -- Сам бар (красный, с прозрачностью)
+            healthBar.Size = Vector2.new(barWidth, barHeight * health)
+            healthBar.Position = Vector2.new(barX, barY + barHeight * (1 - health))
+            healthBar.Color = Color3.new(1, 0, 0) -- КРАСНЫЙ
             healthBar.Visible = true
         else
             healthBar.Visible = false
-            healthBg.Visible = false
+            healthOutline.Visible = false
         end
     end)
     
@@ -656,8 +662,8 @@ local function createEsp(targetPlayer)
             distText:Remove()
             healthBar.Visible = false
             healthBar:Remove()
-            healthBg.Visible = false
-            healthBg:Remove()
+            healthOutline.Visible = false
+            healthOutline:Remove()
             connection:Disconnect()
         end
     end)
@@ -667,7 +673,7 @@ local function createEsp(targetPlayer)
         name = nameText,
         distance = distText,
         healthBar = healthBar,
-        healthBg = healthBg,
+        healthOutline = healthOutline,
         connection = connection
     }
 end
