@@ -491,7 +491,9 @@ end)
 -- ===== 3. ФУНКЦИИ ESP (ОТРИСОВКА) =====
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
-local Drawing = Drawing or nil
+
+-- Хранилище для объектов Drawing
+local espObjects = {}
 
 local function getPlayers()
     local list = {}
@@ -508,67 +510,223 @@ local function worldToScreen(pos)
     return Vector2.new(vec.X, vec.Y), onScreen
 end
 
--- Рисуем бокс через Drawing (если есть)
+-- Рисуем бокс через Drawing
 local function drawBox(character, color)
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    local head = character:FindFirstChild("Head")
+    if not hrp or not head then return end
+
+    local bottomPos, bottomOnScreen = worldToScreen(hrp.Position - Vector3.new(0, 2, 0))
+    local topPos, topOnScreen = worldToScreen(head.Position + Vector3.new(0, 1.5, 0))
+    
+    if not bottomOnScreen or not topOnScreen then return end
+
+    local height = bottomPos.Y - topPos.Y
+    local width = height * 0.5
+
+    -- Обновляем или создаем объект
+    if not espObjects[character] then
+        espObjects[character] = {
+            box = Drawing.new("Square"),
+        }
+        espObjects[character].box.Thickness = 1.5
+        espObjects[character].box.Filled = false
+    end
+
+    local obj = espObjects[character]
+    obj.box.Visible = true
+    obj.box.Color = color
+    obj.box.Size = Vector2.new(width, height)
+    obj.box.Position = Vector2.new(topPos.X - width/2, topPos.Y)
+end
+
+-- Рисуем имя
+local function drawName(character, color)
+    local head = character:FindFirstChild("Head")
+    if not head then return end
+    
+    local pos, onScreen = worldToScreen(head.Position + Vector3.new(0, 2.5, 0))
+    if not onScreen then return end
+
+    if not espObjects[character] then
+        espObjects[character] = {
+            name = Drawing.new("Text"),
+        }
+        espObjects[character].name.Size = 14
+        espObjects[character].name.Center = true
+        espObjects[character].name.Outline = true
+        espObjects[character].name.OutlineColor = Color3.fromRGB(0, 0, 0)
+    end
+
+    local obj = espObjects[character]
+    obj.name.Visible = true
+    obj.name.Color = color
+    obj.name.Text = character.Name
+    obj.name.Position = Vector2.new(pos.X, pos.Y)
+end
+
+-- Рисуем дистанцию
+local function drawDistance(character, color)
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
     local pos, onScreen = worldToScreen(hrp.Position)
     if not onScreen then return end
-    
-    -- Тут будет реальная отрисовка
-    print("Рисую бокс для " .. character.Name)
+
+    local dist = math.floor((player.Character and player.Character:FindFirstChild("HumanoidRootPart") and 
+        (player.Character.HumanoidRootPart.Position - hrp.Position).Magnitude or 0))
+
+    if not espObjects[character] then
+        espObjects[character] = {
+            distance = Drawing.new("Text"),
+        }
+        espObjects[character].distance.Size = 12
+        espObjects[character].distance.Center = true
+        espObjects[character].distance.Outline = true
+        espObjects[character].distance.OutlineColor = Color3.fromRGB(0, 0, 0)
+    end
+
+    local obj = espObjects[character]
+    obj.distance.Visible = true
+    obj.distance.Color = color
+    obj.distance.Text = dist .. "m"
+    obj.distance.Position = Vector2.new(pos.X, pos.Y + 20)
 end
 
--- Рисуем имя
-local function drawName(character, color)
-    -- Логика отрисовки имени
-end
-
--- Рисуем скелет
-local function drawSkeleton(character, color)
-    -- Логика отрисовки скелета
-end
-
--- Рисуем дистанцию
-local function drawDistance(character, color)
-    -- Логика отрисовки дистанции
-end
-
--- Рисуем хп бар
+-- Рисуем HealthBar
 local function drawHealthBar(character, color)
-    -- Логика отрисовки хп бара
+    local humanoid = character:FindFirstChild("Humanoid")
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not hrp then return end
+
+    local bottomPos, bottomOnScreen = worldToScreen(hrp.Position - Vector3.new(0, 2.5, 0))
+    local topPos, topOnScreen = worldToScreen(hrp.Position + Vector3.new(0, 2.5, 0))
+    
+    if not bottomOnScreen or not topOnScreen then return end
+
+    local height = bottomPos.Y - topPos.Y
+    local width = 4
+
+    if not espObjects[character] then
+        espObjects[character] = {
+            healthBg = Drawing.new("Square"),
+            healthFill = Drawing.new("Square"),
+        }
+        espObjects[character].healthBg.Thickness = 0
+        espObjects[character].healthBg.Filled = true
+        espObjects[character].healthBg.Color = Color3.fromRGB(0, 0, 0)
+        espObjects[character].healthBg.Transparency = 0.5
+        
+        espObjects[character].healthFill.Thickness = 0
+        espObjects[character].healthFill.Filled = true
+        espObjects[character].healthFill.Color = Color3.fromRGB(0, 255, 0)
+    end
+
+    local hpPercent = humanoid.Health / humanoid.MaxHealth
+
+    local obj = espObjects[character]
+    obj.healthBg.Visible = true
+    obj.healthBg.Size = Vector2.new(width, height)
+    obj.healthBg.Position = Vector2.new(bottomPos.X - width - 8, topPos.Y)
+    
+    obj.healthFill.Visible = true
+    obj.healthFill.Color = color
+    obj.healthFill.Size = Vector2.new(width, height * hpPercent)
+    obj.healthFill.Position = Vector2.new(bottomPos.X - width - 8, bottomPos.Y - height * hpPercent)
 end
 
--- Проверка команды
+-- Проверка команды (заглушка)
 local function checkTeam(character)
-    -- Логика проверки команды
     return true
+end
+
+-- Очистка объектов при отключении ESP
+local function clearESP()
+    for char, obj in pairs(espObjects) do
+        for _, drawingObj in pairs(obj) do
+            if drawingObj and drawingObj.Remove then
+                drawingObj:Remove()
+            end
+        end
+    end
+    espObjects = {}
 end
 
 -- Главный цикл отрисовки
 RunService.RenderStepped:Connect(function()
-    if not _G.ESP.enabled then return end
+    if not _G.ESP.enabled then
+        -- Если ESP выключен - очищаем все объекты
+        for char, obj in pairs(espObjects) do
+            for _, drawingObj in pairs(obj) do
+                if drawingObj and drawingObj.Remove then
+                    drawingObj:Remove()
+                end
+            end
+        end
+        espObjects = {}
+        return
+    end
+
+    -- Удаляем объекты для игроков, которых больше нет в игре
+    local activePlayers = {}
+    for _, v in ipairs(getPlayers()) do
+        activePlayers[v] = true
+    end
     
+    for char in pairs(espObjects) do
+        if not activePlayers[char] then
+            for _, drawingObj in pairs(espObjects[char]) do
+                if drawingObj and drawingObj.Remove then
+                    drawingObj:Remove()
+                end
+            end
+            espObjects[char] = nil
+        end
+    end
+
     for _, v in ipairs(getPlayers()) do
         local char = v.Character
         if not char then continue end
-        
+
+        -- Создаем пустой объект если его нет
+        if not espObjects[char] then
+            espObjects[char] = {}
+        end
+
         if _G.ESP.box then
             drawBox(char, _G.ESP.boxColor)
+        else
+            -- Скрываем бокс если выключен
+            if espObjects[char] and espObjects[char].box then
+                espObjects[char].box.Visible = false
+            end
         end
+        
         if _G.ESP.name then
             drawName(char, _G.ESP.nameColor)
+        else
+            if espObjects[char] and espObjects[char].name then
+                espObjects[char].name.Visible = false
+            end
         end
-        if _G.ESP.skeleton then
-            drawSkeleton(char, _G.ESP.skeletonColor)
-        end
+        
         if _G.ESP.distance then
             drawDistance(char, _G.ESP.distanceColor)
+        else
+            if espObjects[char] and espObjects[char].distance then
+                espObjects[char].distance.Visible = false
+            end
         end
+        
         if _G.ESP.healthbar then
             drawHealthBar(char, _G.ESP.healthbarColor)
+        else
+            if espObjects[char] and espObjects[char].healthBg then
+                espObjects[char].healthBg.Visible = false
+                espObjects[char].healthFill.Visible = false
+            end
         end
+        
         if _G.ESP.teamcheck then
             checkTeam(char)
         end
@@ -576,3 +734,4 @@ RunService.RenderStepped:Connect(function()
 end)
 
 print("MENU + ESP LOADED - Press Right Shift")
+
