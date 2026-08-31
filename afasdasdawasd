@@ -1,5 +1,5 @@
 -- ===================================================
--- ПОЛНЫЙ РАБОЧИЙ СКРИПТ: МЕНЮ + ESP + ВСЕ ФУНКЦИИ
+-- ПОЛНЫЙ РАБОЧИЙ СКРИПТ: МЕНЮ + ESP ДЛЯ LONE SURVIVAL
 -- ===================================================
 
 -- ===== 1. ПЕРЕМЕННЫЕ =====
@@ -283,7 +283,7 @@ local function createSubToggleWithColor(parent, name, key, default, colorKey)
     return frame
 end
 
--- Функция создания простого тоггла (без цвета)
+-- Функция создания простого тоггла
 local function createSubToggle(parent, name, key, default)
     local frame = Instance.new("Frame")
     frame.Parent = parent
@@ -341,7 +341,7 @@ local nameToggle = createSubToggleWithColor(subContainer, "Name", "name", false,
 local skeletonToggle = createSubToggleWithColor(subContainer, "Skeleton", "skeleton", false, "skeletonColor")
 -- Distance
 local distanceToggle = createSubToggleWithColor(subContainer, "Distance", "distance", false, "distanceColor")
--- HealthBar (БЕЗ ЦВЕТА)
+-- HealthBar
 local healthBarToggle = createSubToggle(subContainer, "HealthBar", "healthbar", false)
 -- TeamCheck
 local teamCheckToggle = createSubToggle(subContainer, "TeamCheck", "teamcheck", false)
@@ -493,15 +493,33 @@ UserInputService.InputChanged:Connect(function(input)
     )
 end)
 
--- ===== 3. ESP ФУНКЦИИ (РАБОЧИЕ БОКСЫ) =====
+-- ===== 3. ESP ДЛЯ LONE SURVIVAL (РАБОЧИЙ) =====
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local Drawing = Drawing or nil
 
+if not Drawing then
+    warn("Drawing не поддерживается!")
+end
+
 local espObjects = {}
 
-local function createEsp(targetPlayer)
-    if not Drawing then return end
+-- Функция поиска игроков в workspace (по частям тела)
+local function findPlayersInWorkspace()
+    local found = {}
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if obj:IsA("Model") then
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            if hrp and obj ~= player.Character then
+                table.insert(found, obj)
+            end
+        end
+    end
+    return found
+end
+
+local function createEspForModel(model)
+    if espObjects[model] or not Drawing then return end
     
     -- Бокс
     local box = Drawing.new("Square")
@@ -531,25 +549,24 @@ local function createEsp(targetPlayer)
     distText.OutlineColor = Color3.new(0, 0, 0)
     distText.Font = 2
     
-    -- ХП бар (толстый, справа)
+    -- ХП бар
     local healthBar = Drawing.new("Square")
     healthBar.Visible = false
-    healthBar.Color = Color3.new(1, 0, 0) -- КРАСНЫЙ
+    healthBar.Color = Color3.new(1, 0, 0)
     healthBar.Thickness = 0
     healthBar.Transparency = 0.8
     healthBar.Filled = true
     
-    -- Обводка хп бара (черная)
     local healthOutline = Drawing.new("Square")
     healthOutline.Visible = false
-    healthOutline.Color = Color3.new(0, 0, 0) -- ЧЕРНАЯ ОБВОДКА
+    healthOutline.Color = Color3.new(0, 0, 0)
     healthOutline.Thickness = 1
     healthOutline.Transparency = 1
     healthOutline.Filled = false
     
     local connection
     connection = RunService.RenderStepped:Connect(function()
-        if not _G.ESP.enabled then
+        if not _G.ESP.enabled or not model or not model.Parent then
             box.Visible = false
             nameText.Visible = false
             distText.Visible = false
@@ -558,8 +575,8 @@ local function createEsp(targetPlayer)
             return
         end
         
-        local char = targetPlayer.Character
-        if not char then
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+        if not hrp then
             box.Visible = false
             nameText.Visible = false
             distText.Visible = false
@@ -568,15 +585,14 @@ local function createEsp(targetPlayer)
             return
         end
         
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char:FindFirstChild("Humanoid")
-        if not hrp or not humanoid then
-            box.Visible = false
-            nameText.Visible = false
-            distText.Visible = false
-            healthBar.Visible = false
-            healthOutline.Visible = false
-            return
+        local humanoid = model:FindFirstChild("Humanoid")
+        if not humanoid then
+            for _, child in ipairs(model:GetChildren()) do
+                if child:IsA("Humanoid") then
+                    humanoid = child
+                    break
+                end
+            end
         end
         
         local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
@@ -590,10 +606,24 @@ local function createEsp(targetPlayer)
         end
         
         -- Расчёт размеров
-        local top = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 3.5, 0))
-        local bottom = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, -3.5, 0))
-        local sizeY = math.abs(top.Y - bottom.Y)
-        local sizeX = sizeY * 0.6
+        local sizeY = 4
+        local sizeX = 2
+        
+        local head = model:FindFirstChild("Head")
+        if head and head:IsA("BasePart") then
+            local headPos, headOn = Camera:WorldToViewportPoint(head.Position)
+            if headOn then
+                sizeY = math.abs(headPos.Y - pos.Y) * 1.5
+            end
+        end
+        
+        if sizeY < 2 then
+            local dist = (hrp.Position - Camera.CFrame.Position).Magnitude
+            sizeY = math.clamp(200 / dist, 1.5, 10)
+            sizeX = sizeY * 0.6
+        else
+            sizeX = sizeY * 0.6
+        end
         
         -- БОКС
         if _G.ESP.box then
@@ -607,7 +637,14 @@ local function createEsp(targetPlayer)
         
         -- ИМЯ
         if _G.ESP.name then
-            nameText.Text = targetPlayer.Name
+            local displayName = model.Name
+            for _, v in ipairs(Players:GetPlayers()) do
+                if v.Character == model then
+                    displayName = v.Name
+                    break
+                end
+            end
+            nameText.Text = displayName
             nameText.Position = Vector2.new(pos.X, pos.Y - sizeY / 2 - 16)
             nameText.Color = _G.ESP.nameColor or Color3.new(1, 1, 1)
             nameText.Visible = true
@@ -616,35 +653,37 @@ local function createEsp(targetPlayer)
         end
         
         -- ДИСТАНЦИЯ
-        if _G.ESP.distance then
-            local dist = (hrp.Position - player.Character.HumanoidRootPart.Position).Magnitude
-            distText.Text = string.format("%.0fm", dist)
-            distText.Position = Vector2.new(pos.X, pos.Y + sizeY / 2 + 16)
-            distText.Color = _G.ESP.distanceColor or Color3.new(1, 1, 1)
-            distText.Visible = true
+        if _G.ESP.distance and player.Character then
+            local playerHrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if playerHrp then
+                local dist = (hrp.Position - playerHrp.Position).Magnitude
+                distText.Text = string.format("%.0fm", dist)
+                distText.Position = Vector2.new(pos.X, pos.Y + sizeY / 2 + 16)
+                distText.Color = _G.ESP.distanceColor or Color3.new(1, 1, 1)
+                distText.Visible = true
+            end
         else
             distText.Visible = false
         end
         
-        -- ХП БАР (СПРАВА ОТ БОКСА)
-        if _G.ESP.healthbar then
+        -- ХП БАР
+        if _G.ESP.healthbar and humanoid then
             local health = humanoid.Health / humanoid.MaxHealth
+            if health < 0 then health = 0 end
+            
             local barWidth = 6
             local barHeight = sizeY
             
-            -- Позиция справа от бокса
             local barX = pos.X + sizeX / 2 + 4
             local barY = pos.Y - sizeY / 2
             
-            -- Обводка (чуть больше)
             healthOutline.Size = Vector2.new(barWidth + 2, barHeight + 2)
             healthOutline.Position = Vector2.new(barX - 1, barY - 1)
             healthOutline.Visible = true
             
-            -- Сам бар (красный, с прозрачностью)
             healthBar.Size = Vector2.new(barWidth, barHeight * health)
             healthBar.Position = Vector2.new(barX, barY + barHeight * (1 - health))
-            healthBar.Color = Color3.new(1, 0, 0) -- КРАСНЫЙ
+            healthBar.Color = Color3.new(1 - health, health, 0)
             healthBar.Visible = true
         else
             healthBar.Visible = false
@@ -652,57 +691,62 @@ local function createEsp(targetPlayer)
         end
     end)
     
-    targetPlayer.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            box.Visible = false
-            box:Remove()
-            nameText.Visible = false
-            nameText:Remove()
-            distText.Visible = false
-            distText:Remove()
-            healthBar.Visible = false
-            healthBar:Remove()
-            healthOutline.Visible = false
-            healthOutline:Remove()
-            connection:Disconnect()
-        end
-    end)
-    
-    espObjects[targetPlayer] = {
+    espObjects[model] = {
         box = box,
         name = nameText,
         distance = distText,
         healthBar = healthBar,
         healthOutline = healthOutline,
-        connection = connection
+        connection = connection,
+        model = model
     }
 end
 
--- Создаём ESP для всех игроков
-for _, v in ipairs(Players:GetPlayers()) do
-    if v ~= player then
-        createEsp(v)
+local function cleanupEsp(model)
+    if espObjects[model] then
+        local obj = espObjects[model]
+        pcall(function()
+            obj.box:Remove()
+            obj.name:Remove()
+            obj.distance:Remove()
+            obj.healthBar:Remove()
+            obj.healthOutline:Remove()
+        end)
+        if obj.connection then
+            obj.connection:Disconnect()
+        end
+        espObjects[model] = nil
     end
 end
 
-Players.PlayerAdded:Connect(function(v)
-    if v ~= player then
-        createEsp(v)
+local function scanForPlayers()
+    if not Drawing then return end
+    local models = findPlayersInWorkspace()
+    for _, model in ipairs(models) do
+        if not espObjects[model] then
+            createEspForModel(model)
+        end
+    end
+    
+    for model, _ in pairs(espObjects) do
+        if not model or not model.Parent then
+            cleanupEsp(model)
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(2) do
+        if _G.ESP.enabled then
+            scanForPlayers()
+        end
     end
 end)
 
 Players.PlayerRemoving:Connect(function(v)
-    if espObjects[v] then
-        for _, obj in pairs(espObjects[v]) do
-            if obj and obj.Remove then
-                pcall(obj.Remove, obj)
-            end
-        end
-        if espObjects[v].connection then
-            espObjects[v].connection:Disconnect()
-        end
-        espObjects[v] = nil
+    if v.Character then
+        cleanupEsp(v.Character)
     end
 end)
 
-print("✅ MENU + ESP LOADED - Press Right Shift")
+print("✅ MENU + ESP FOR LONE SURVIVAL LOADED - Press Right Shift")
