@@ -63,26 +63,58 @@ local fovRadius = 120
 local aimTarget = nil
 local fovGUI = nil
 
--- ===== ЗАЩИТА МЕНЮ ОТ УДАЛЕНИЯ =====
-local function protectMenu()
+-- ===== ЗАЩИТА МЕНЮ ОТ ПРОПАДАНИЯ (ФИКС) =====
+-- Сохраняем ссылку на родителя
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Функция восстановления меню
+local function restoreMenu()
     if not screenGui or not screenGui.Parent then
-        -- Если GUI пропал - пересоздаем
+        -- Если GUI нет - создаем новый
         screenGui = Instance.new("ScreenGui")
-        screenGui.Parent = player:WaitForChild("PlayerGui")
+        screenGui.Parent = playerGui
         screenGui.Name = "FoxMenu"
         screenGui.ResetOnSpawn = false
-        -- Пересоздаем все элементы меню
-        createMenu()
+        
+        -- Пересоздаем mainFrame (если он был удален)
+        if not mainFrame or not mainFrame.Parent then
+            -- Пересоздаем все элементы меню заново
+            -- Просто перезагружаем скрипт
+            print("🔄 Меню восстановлено (перезагрузка)")
+            -- Пересоздаем весь GUI заново
+            local newScript = script:Clone()
+            newScript.Parent = playerGui
+            script:Destroy()
+        end
     end
 end
 
--- Проверяем каждые 5 секунд
+-- Следим за удалением через AncestryChanged
+local function watchMenu()
+    if screenGui then
+        screenGui.AncestryChanged:Connect(function()
+            if not screenGui or not screenGui.Parent then
+                task.wait(0.1)
+                restoreMenu()
+            end
+        end)
+    end
+end
+
+-- Запускаем слежение
+watchMenu()
+
+-- Дополнительная проверка каждые 2 секунды
 task.spawn(function()
     while true do
-        task.wait(5)
-        protectMenu()
+        task.wait(2)
+        if not screenGui or not screenGui.Parent then
+            restoreMenu()
+        end
     end
 end)
+
+print("✅ Защита меню активирована")
 
 local function createFOVCircle()
     if fovGUI then
